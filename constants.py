@@ -17,10 +17,11 @@ img_path = {'player1' : os.path.join(mypath, 'assets/imgs/player1.png'),
             'grass3' : os.path.join(mypath, 'assets/imgs/grass3.png'),
             'grass4' : os.path.join(mypath, 'assets/imgs/grass4.png'),
             'grass5' : os.path.join(mypath, 'assets/imgs/grass5.png'),
-            'stone' : os.path.join(mypath, 'assets/imgs/stone1.png')}
+            'stone' : os.path.join(mypath, 'assets/imgs/stone1.png'),
+            'tree' : os.path.join(mypath, 'assets/imgs/tree.png')}
 
 font_path = os.path.join(mypath, 'assets/fonts/font.ttf')
 
 
-lvl_data = {'1' : {'time' : 20, 'grass_pallet' : [1, 2, 2, 4], 'num_tiles' : (18, 9), 'player_spawn' : (1000, 550)},
+lvl_data = {'1' : {'time' : 20, 'grass_pallet' : [1, 2, 2, 4], 'num_tiles' : (18, 9), 'player_spawn' : (1036, 544), 'trees' : [(576, 448), (128, 256)]},
             '2' : {'time' : 15, 'grass_pallet' : [1, 1, 1, 1, 2, 2, 4], 'num_tiles' : (18, 9), 'player_spawn' : (100, 600)}}

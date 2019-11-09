@@ -15,18 +15,19 @@ def terminate():
 
 def init_grass(level):
     bg_tiles = pyg.sprite.Group()
-    for i in range(1, 19):
-        for j in range(1, 10):
+    for i in range(1, lvl_data[level]['num_tiles'][0] + 1):
+        for j in range(1, lvl_data[level]['num_tiles'][1] + 1):
             tile = BGTile(window, f"grass{random.choice(lvl_data[level]['grass_pallet'])}", 64*i, 64*j)
             bg_tiles.add(tile)
 
     return bg_tiles
 
-def next_level(window, level, player, tiles, pitfalls):
+def next_level(window, level, player,statics, pitfalls, trees):
     level = str(int(level) + 1)
     player.__init__(window, level)
-    tiles.empty()
+    statics.empty()
     pitfalls.empty()
+    trees.empty()
 
 
 if __name__ == '__main__':
@@ -45,15 +46,26 @@ if __name__ == '__main__':
 
     player = Player(window, level)
     border = Border(window)
+
     bg_tiles = init_grass(level)
-    tiles = pyg.sprite.Group()
-    tile = Tile(window, 'grass5', 300, 300)
-    tiles.add(tile)
-    tile = Tile(window, 'stone', 512, 512)
-    tiles.add(tile)
+    statics = pyg.sprite.Group()
+    static = Static(window, 'grass5', 300, 300)
+    statics.add(static)
+    static = Static(window, 'stone', 512, 512)
+    statics.add(static)
+
     pitfalls = pyg.sprite.Group()
-    pitfall = Pitfall(window, 128, 128)
+    pitfall = Pitfall(window, 128, 128, wall=[1, 0, 0, 1])
     pitfalls.add(pitfall)
+    pitfall = Pitfall(window, 128, 192, wall=[0, 1, 1, 1])
+    pitfalls.add(pitfall)
+    pitfall = Pitfall(window, 192, 128, wall=[1, 1, 1, 0])
+    pitfalls.add(pitfall)
+
+    trees = pyg.sprite.Group()
+    for pos in lvl_data[level]['trees']:
+        tree = Tree(window, pos[0], pos[1])
+        trees.add(tree)
 
     while True:
 
@@ -65,16 +77,17 @@ if __name__ == '__main__':
                 if event.key == pyg.K_ESCAPE:
                     terminate()
                 elif event.key == pyg.K_SPACE:
-                    next_level(window, level, player, tiles, pitfalls)
+                    next_level(window, level, player, statics, pitfalls, trees)
                     level = str(int(level) + 1)
                     time = lvl_data[level]['time']
                     bg_tiles = init_grass(level)
+                elif event.key == pyg.K_k:
+                    player.die()
             elif event.type == timer_tick:
                 time -= 1
                 if time == 0:
                     player.die()
                     time = lvl_data[level]['time']
-
 
 
         event_keys = pyg.key.get_pressed()
@@ -104,15 +117,18 @@ if __name__ == '__main__':
 
         for bg_tile in bg_tiles:
             bg_tile.render()
-        for tile in tiles:
-            tile.render()
+        for static in statics:
+            static.render()
         border.render()
 
         for pit in pitfalls:
             pit.render()
 
-        player.update(border.rect, tiles, pitfalls)
+        player.update(border.rect, statics, pitfalls, trees)
         player.render()
+
+        for tree in trees:
+            tree.render()
 
         window.blit(score_text, (15, 15))
         window.blit(level_text, (1075, 15))
