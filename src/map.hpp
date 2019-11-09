@@ -26,11 +26,11 @@ public:
 class treeClass: public obstacleClass
 {
 public:
-  int *setHitbox(int hitbox[][], int count, int centerX, int centerY);
+  int setHitbox(int centerX, int centerY);
 };
 
 
-int *hitboxarr(int arr[][])
+int (&hitboxarr(int (&arr)[]))[]
 {
-
+  return arr;
 }
