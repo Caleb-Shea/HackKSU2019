@@ -1,10 +1,35 @@
-#include "map.hpp"
+#include <string>
+#include <iostream>
+#include <boost/python.hpp>
 
-int treeClass::setHitbox(int centerX, int centerY)
+class mapClass
 {
-  if ()
-  {
+public:
 
-  }
-  return hitbox;
-}
+private:
+
+};
+
+class blockerClass
+{
+public:
+
+private:
+
+};
+
+class treeClass: class blockerClass
+{
+public:
+
+private:
+
+};
+
+class rockClass: class blockerClass
+{
+public:
+
+private:
+
+};
