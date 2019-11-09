@@ -122,3 +122,15 @@ if __name__ == '__main__':
         pyg.display.flip()
 
         clock.tick(30)
+
+
+def terrainGenList():
+    gen = []
+    for i in range(18):
+        tmp = []
+        for j in range(9):
+            tmp.append(random.randint(1, 12))
+
+        gen.append(tmp)
+
+    return gen
