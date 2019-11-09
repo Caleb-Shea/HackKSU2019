@@ -36,23 +36,10 @@ class Player(pyg.sprite.Sprite):
         self.rect.y += self.vel_y
 
     def border_check(self, border):
-        if self.rect.bottom > border.bottom:
-            self.vel_y = 0
-            self.rect.bottom = border.bottom
+        if not pyg.Rect.colliderect(self.rect, border):
+            self.die()
 
-        if self.rect.top < border.top:
-            self.vel_y = 0
-            self.rect.top = border.top
-
-        if self.rect.left < border.left:
-            self.vel_x = 0
-            self.rect.left = border.left
-
-        if self.rect.right > border.right:
-            self.vel_x = 0
-            self.rect.right = border.right
-
-    def collide_x(self, tiles, pitfalls):
+    def collide_x(self, tiles, pitfalls, trees):
         for tile in tiles:
             if pyg.Rect.colliderect(self.rect, tile.rect):
                 if self.vel_x < 0:
@@ -61,11 +48,21 @@ class Player(pyg.sprite.Sprite):
                 elif self.vel_x > 0:
                     self.rect.right = tile.rect.left
                     self.vel_x = 0
+
         for pit in pitfalls:
             if pyg.Rect.colliderect(self.rect, pit.rect):
                 self.die()
 
-    def collide_y(self, tiles, pitfalls):
+        for tree in trees:
+            if pyg.Rect.colliderect(self.rect, tree.rect):
+                if self.vel_x < 0:
+                    self.rect.left = tree.rect.right
+                    self.vel_x = 0
+                elif self.vel_x > 0:
+                    self.rect.right = tree.rect.left
+                    self.vel_x = 0
+
+    def collide_y(self, tiles, pitfalls, trees):
         for tile in tiles:
             if pyg.Rect.colliderect(self.rect, tile.rect):
                 if self.vel_y < 0:
@@ -74,15 +71,25 @@ class Player(pyg.sprite.Sprite):
                 elif self.vel_y > 0:
                     self.rect.bottom = tile.rect.top
                     self.vel_y = 0
+
         for pit in pitfalls:
             if pyg.Rect.colliderect(self.rect, pit.rect):
                 self.die()
 
-    def update(self, border, tiles, pitfalls):
+        for tree in trees:
+            if pyg.Rect.colliderect(self.rect, tree.rect):
+                if self.vel_y < 0:
+                    self.rect.top = tree.rect.bottom
+                    self.vel_y = 0
+                elif self.vel_y > 0:
+                    self.rect.bottom = tree.rect.top
+                    self.vel_y = 0
+
+    def update(self, border, tiles, pitfalls, trees):
         self.move_x()
-        self.collide_x(tiles, pitfalls)
+        self.collide_x(tiles, pitfalls, trees)
         self.move_y()
-        self.collide_y(tiles, pitfalls)
+        self.collide_y(tiles, pitfalls, trees)
 
         self.vel_x *= .8
         if abs(self.vel_x) < .1: self.vel_x = 0
@@ -112,7 +119,7 @@ class BGTile(pyg.sprite.Sprite):
     def render(self):
         self.window.blit(self.image, self.rect)
 
-class Tile(pyg.sprite.Sprite):
+class Static(pyg.sprite.Sprite):
     def __init__(self, window, type, x, y):
         super().__init__()
         self.window = window
@@ -135,15 +142,44 @@ class Border(pyg.sprite.Sprite):
         pyg.draw.rect(self.window, color['black'], (64, 64, 1152, 576), 5)
 
 class Pitfall(pyg.sprite.Sprite):
-    def __init__(self, window, x, y):
+    def __init__(self, window, x, y, wall=[1, 1, 1, 1]):
         super().__init__()
         self.window = window
         self.image = pyg.Surface((64, 64))
         self.image.fill(color['bg'])
-        self.rect = self.image.get_rect()
+        self.blit_rect = self.image.get_rect()
 
-        self.rect.x = x
-        self.rect.y = y
+        self.blit_rect.x = x
+        self.blit_rect.y = y
+
+        self.rect = self.blit_rect.inflate(-40, -40)
+
+        self.wall = wall
 
     def render(self):
-        self.window.blit(self.image, self.rect)
+        self.window.blit(self.image, self.blit_rect)
+
+        if self.wall[0]:
+            pyg.draw.line(self.window, color['black'], (self.blit_rect.x, self.blit_rect.y), (self.blit_rect.x + 64, self.blit_rect.y), 5)
+        if self.wall[1]:
+            pyg.draw.line(self.window, color['black'], (self.blit_rect.x + 64, self.blit_rect.y), (self.blit_rect.x + 64, self.blit_rect.y + 64), 5)
+        if self.wall[2]:
+            pyg.draw.line(self.window, color['black'], (self.blit_rect.x, self.blit_rect.y + 64), (self.blit_rect.x + 64, self.blit_rect.y + 64), 5)
+        if self.wall[3]:
+            pyg.draw.line(self.window, color['black'], (self.blit_rect.x, self.blit_rect.y), (self.blit_rect.x, self.blit_rect.y + 64), 5)
+
+class Tree(pyg.sprite.Sprite):
+    def __init__(self, window, x, y):
+        super().__init__()
+        self.window = window
+        self.image = pyg.image.load(img_path['tree'])
+        self.blit_rect = self.image.get_rect()
+
+
+        self.blit_rect.x = x
+        self.blit_rect.y = y
+
+        self.rect = self.blit_rect.inflate(-128, -128)
+
+    def render(self):
+        self.window.blit(self.image, self.blit_rect)
