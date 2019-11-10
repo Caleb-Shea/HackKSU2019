@@ -49,6 +49,12 @@ class Player(pyg.sprite.Sprite):
         if not pyg.Rect.colliderect(self.rect, border):
             self.die()
 
+    def img_collision(self, imgs, level):
+        if level == '4':
+            for img in imgs:
+                if pyg.Rect.colliderect(self.rect, img.rect):
+                    self.die()
+
     def collide_x(self, tiles, pitfalls, trees, pushables):
         for tile in tiles:
             if pyg.Rect.colliderect(self.rect, tile.rect):
@@ -74,12 +80,23 @@ class Player(pyg.sprite.Sprite):
 
         for push in pushables:
             if pyg.Rect.colliderect(self.rect, push.rect):
+                self.pushing = True
                 if self.vel_x < 0:
                     push.rect.right = self.rect.left
                     push.vel_x = self.vel_x
+
+                    push.collide_x(tiles, pitfalls, trees, pushables)
+                    self.vel_x = push.vel_x
+
                 elif self.vel_x > 0:
                     push.rect.left = self.rect.right
                     push.vel_x = self.vel_x
+
+                    push.collide_x(tiles, pitfalls, trees, pushables)
+                    self.vel_x = push.vel_x
+
+            else:
+                self.pushing = False
 
     def collide_y(self, tiles, pitfalls, trees, pushables):
         for tile in tiles:
@@ -106,14 +123,25 @@ class Player(pyg.sprite.Sprite):
 
         for push in pushables:
             if pyg.Rect.colliderect(self.rect, push.rect):
+                self.pushing = True
                 if self.vel_y < 0:
                     push.rect.bottom = self.rect.top
                     push.vel_y = self.vel_y
-                elif self.vel_x > 0:
+
+                    push.collide_y(tiles, pitfalls, trees, pushables)
+                    self.vel_y = push.vel_y
+
+                elif self.vel_y > 0:
                     push.rect.top = self.rect.bottom
                     push.vel_y = self.vel_y
 
-    def update(self, border, tiles, pitfalls, trees, pushables):
+                    push.collide_y(tiles, pitfalls, trees, pushables)
+                    self.vel_y = push.vel_y
+
+            else:
+                self.pushing = False
+
+    def update(self, border, tiles, pitfalls, trees, pushables, imgs, level):
         self.move_x()
         self.collide_x(tiles, pitfalls, trees, pushables)
         self.move_y()
@@ -126,6 +154,7 @@ class Player(pyg.sprite.Sprite):
         if abs(self.vel_y) < .1: self.vel_y = 0
 
         self.border_check(border)
+        self.img_collision(imgs, level)
 
         self.blit_rect.center = self.rect.center
 
@@ -169,7 +198,7 @@ class Border(pyg.sprite.Sprite):
         pyg.draw.rect(self.window, color['black'], self.rect, 5)
 
 class Pitfall(pyg.sprite.Sprite):
-    def __init__(self, window, x, y, wall=[1, 1, 1, 1]):
+    def __init__(self, window, x, y, wall):
         super().__init__()
         self.window = window
         self.image = pyg.Surface((64, 64))
@@ -240,6 +269,79 @@ class Pushable(pyg.sprite.Sprite):
 
         self.vel_x = 0
         self.vel_y = 0
+
+    def border_check(self, border):
+        if not pyg.Rect.colliderect(self.rect, border):
+            self.kill()
+
+    def collide_x(self, tiles, pitfalls, trees, pushables):
+        for tile in tiles:
+            if pyg.Rect.colliderect(self.rect, tile.rect):
+                if self.vel_x < 0:
+                    self.rect.left = tile.rect.right
+                    self.vel_x = 0
+                elif self.vel_x > 0:
+                    self.rect.right = tile.rect.left
+                    self.vel_x = 0
+
+        for pit in pitfalls:
+            if pyg.Rect.colliderect(self.rect, pit.rect):
+                self.die()
+
+        for tree in trees:
+            if pyg.Rect.colliderect(self.rect, tree.rect):
+                if self.vel_x < 0:
+                    self.rect.left = tree.rect.right
+                    self.vel_x = 0
+                elif self.vel_x > 0:
+                    self.rect.right = tree.rect.left
+                    self.vel_x = 0
+
+        for push in pushables:
+            if not push.rect == self.rect:
+                if pyg.Rect.colliderect(self.rect, push.rect):
+                    if self.vel_x < 0:
+                        push.rect.right = self.rect.left
+                        push.vel_x = self.vel_x
+                    elif self.vel_x > 0:
+                        push.rect.left = self.rect.right
+                        push.vel_x = self.vel_x
+
+    def collide_y(self, tiles, pitfalls, trees, pushables):
+        for tile in tiles:
+            if pyg.Rect.colliderect(self.rect, tile.rect):
+                if self.vel_y < 0:
+                    self.rect.top = tile.rect.bottom
+                    self.vel_y = 0
+                elif self.vel_y > 0:
+                    self.rect.bottom = tile.rect.top
+                    self.vel_y = 0
+
+        for pit in pitfalls:
+            if pyg.Rect.colliderect(self.rect, pit.rect):
+                self.die()
+
+        for tree in trees:
+            if pyg.Rect.colliderect(self.rect, tree.rect):
+                if self.vel_y < 0:
+                    self.rect.top = tree.rect.bottom
+                    self.vel_y = 0
+                elif self.vel_y > 0:
+                    self.rect.bottom = tree.rect.top
+                    self.vel_y = 0
+
+        for push in pushables:
+            if not push.rect == self.rect:
+                if pyg.Rect.colliderect(self.rect, push.rect):
+                    if self.vel_y < 0:
+                        push.rect.top = self.rect.bottom
+                        push.vel_y = self.vel_y
+                    elif self.vel_y > 0:
+                        push.rect.bottom = self.rect.top
+                        push.vel_y = self.vel_y
+
+    def update(self, border):
+        self.border_check(border)
 
     def render(self):
         self.window.blit(self.image, self.rect)
