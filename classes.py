@@ -14,32 +14,42 @@ class Player(pyg.sprite.Sprite):
 
         self.rect = self.blit_rect.inflate(-12, -12)
 
-        self.speed = 12
-        self.accel = 3
+        self.speed = 8
+        self.accel = 2
 
         self.vel_x = 0
         self.vel_y = 0
 
         self.deaths = deaths
+        self.death_effect = pyg.mixer.Sound(sound_path['death'])
+        self.death_effect.set_volume(.3)
 
         self.level = level
         self.rect.x = lvl_data[str(level)]['player_spawn'][0]
         self.rect.y = lvl_data[str(level)]['player_spawn'][1]
 
+        self.pushing = False
+
     def die(self):
+        self.death_effect.play()
+        pyg.event.post(player_death)
         self.__init__(self.window, self.level, self.deaths + 1)
 
     def move_x(self):
-        self.rect.x += self.vel_x
+        self.rect.x += self.vel_x / 2
+        if not self.pushing:
+            self.rect.x += self.vel_x / 2
 
     def move_y(self):
-        self.rect.y += self.vel_y
+        self.rect.y += self.vel_y / 2
+        if not self.pushing:
+            self.rect.y += self.vel_y / 2
 
     def border_check(self, border):
         if not pyg.Rect.colliderect(self.rect, border):
             self.die()
 
-    def collide_x(self, tiles, pitfalls, trees):
+    def collide_x(self, tiles, pitfalls, trees, pushables):
         for tile in tiles:
             if pyg.Rect.colliderect(self.rect, tile.rect):
                 if self.vel_x < 0:
@@ -62,7 +72,16 @@ class Player(pyg.sprite.Sprite):
                     self.rect.right = tree.rect.left
                     self.vel_x = 0
 
-    def collide_y(self, tiles, pitfalls, trees):
+        for push in pushables:
+            if pyg.Rect.colliderect(self.rect, push.rect):
+                if self.vel_x < 0:
+                    push.rect.right = self.rect.left
+                    push.vel_x = self.vel_x
+                elif self.vel_x > 0:
+                    push.rect.left = self.rect.right
+                    push.vel_x = self.vel_x
+
+    def collide_y(self, tiles, pitfalls, trees, pushables):
         for tile in tiles:
             if pyg.Rect.colliderect(self.rect, tile.rect):
                 if self.vel_y < 0:
@@ -85,11 +104,20 @@ class Player(pyg.sprite.Sprite):
                     self.rect.bottom = tree.rect.top
                     self.vel_y = 0
 
-    def update(self, border, tiles, pitfalls, trees):
+        for push in pushables:
+            if pyg.Rect.colliderect(self.rect, push.rect):
+                if self.vel_y < 0:
+                    push.rect.bottom = self.rect.top
+                    push.vel_y = self.vel_y
+                elif self.vel_x > 0:
+                    push.rect.top = self.rect.bottom
+                    push.vel_y = self.vel_y
+
+    def update(self, border, tiles, pitfalls, trees, pushables):
         self.move_x()
-        self.collide_x(tiles, pitfalls, trees)
+        self.collide_x(tiles, pitfalls, trees, pushables)
         self.move_y()
-        self.collide_y(tiles, pitfalls, trees)
+        self.collide_y(tiles, pitfalls, trees, pushables)
 
         self.vel_x *= .8
         if abs(self.vel_x) < .1: self.vel_x = 0
@@ -100,7 +128,6 @@ class Player(pyg.sprite.Sprite):
         self.border_check(border)
 
         self.blit_rect.center = self.rect.center
-
 
     def render(self):
         self.window.blit(self.image, self.blit_rect)
@@ -133,13 +160,13 @@ class Static(pyg.sprite.Sprite):
         self.window.blit(self.image, self.rect)
 
 class Border(pyg.sprite.Sprite):
-    def __init__(self, window):
+    def __init__(self, window, num_tiles):
         super().__init__()
         self.window = window
-        self.rect = pyg.Rect(64, 64, 1152, 576)
+        self.rect = pyg.Rect(64, 64, 64 * num_tiles[0], 64 * num_tiles[1])
 
     def render(self):
-        pyg.draw.rect(self.window, color['black'], (64, 64, 1152, 576), 5)
+        pyg.draw.rect(self.window, color['black'], self.rect, 5)
 
 class Pitfall(pyg.sprite.Sprite):
     def __init__(self, window, x, y, wall=[1, 1, 1, 1]):
@@ -168,13 +195,13 @@ class Pitfall(pyg.sprite.Sprite):
         if self.wall[3]:
             pyg.draw.line(self.window, color['black'], (self.blit_rect.x, self.blit_rect.y), (self.blit_rect.x, self.blit_rect.y + 64), 5)
 
+
 class Tree(pyg.sprite.Sprite):
     def __init__(self, window, x, y):
         super().__init__()
         self.window = window
         self.image = pyg.image.load(img_path['tree'])
         self.blit_rect = self.image.get_rect()
-
 
         self.blit_rect.x = x
         self.blit_rect.y = y
@@ -183,3 +210,36 @@ class Tree(pyg.sprite.Sprite):
 
     def render(self):
         self.window.blit(self.image, self.blit_rect)
+
+
+class Exit(pyg.sprite.Sprite):
+    def __init__(self, window, level):
+        super().__init__()
+        self.window = window
+        self.image = pyg.image.load(img_path['exit'])
+        self.rect = self.image.get_rect()
+
+        self.rect.x = lvl_data[level]['exit'][0]
+        self.rect.y = lvl_data[level]['exit'][1]
+
+        self.level = level
+
+    def render(self):
+        self.window.blit(self.image, self.rect)
+
+
+class Pushable(pyg.sprite.Sprite):
+    def __init__(self, window, x, y, img):
+        super().__init__()
+        self.window = window
+        self.image = pyg.image.load(img_path[img])
+        self.rect = self.image.get_rect()
+
+        self.rect.x = x
+        self.rect.y = y
+
+        self.vel_x = 0
+        self.vel_y = 0
+
+    def render(self):
+        self.window.blit(self.image, self.rect)

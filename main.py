@@ -5,10 +5,6 @@ from classes import *
 from constants import *
 
 
- # Custom events
-timer_tick = pyg.USEREVENT + 1
-pyg.time.set_timer(timer_tick, 1000)
-
 def terminate():
     pyg.quit()
     raise SystemExit()
@@ -33,34 +29,43 @@ def next_level(window, level, player,statics, pitfalls, trees):
 if __name__ == '__main__':
     pyg.init()
     pyg.font.init()
-    pyg.display.set_caption("Hack KState")
+    pyg.mixer.init()
+    pyg.display.set_caption("The Game of Something-or-other")
     window = pyg.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
 
-    clock = pyg.time.Clock()
-    score = 0
-    level = '1'
-    time = lvl_data[level]['time']
+    bg_music = pyg.mixer.Sound(sound_path['bg_music'])
+    bg_music.play(-1)
 
+    clock = pyg.time.Clock()
+    paused = False
+
+    score = 0
+    level = '3'
+    time = lvl_data[level]['time']
 
     font = pyg.font.Font(font_path, 28)
 
     player = Player(window, level)
-    border = Border(window)
+    border = Border(window, lvl_data[level]['num_tiles'])
+    exit = Exit(window, level)
+
+    time_death = False
 
     bg_tiles = init_grass(level)
     statics = pyg.sprite.Group()
-    static = Static(window, 'grass5', 300, 300)
-    statics.add(static)
-    static = Static(window, 'stone', 512, 512)
-    statics.add(static)
+    for data in lvl_data[level]['statics']:
+        static = Static(window, data[2], data[0], data[1])
+        statics.add(static)
+
+    pushables = pyg.sprite.Group()
+    for data in lvl_data[level]['pushables']:
+        pushable = Pushable(window, data[0], data[1], data[2])
+        pushables.add(pushable)
 
     pitfalls = pyg.sprite.Group()
-    pitfall = Pitfall(window, 128, 128, wall=[1, 0, 0, 1])
-    pitfalls.add(pitfall)
-    pitfall = Pitfall(window, 128, 192, wall=[0, 1, 1, 1])
-    pitfalls.add(pitfall)
-    pitfall = Pitfall(window, 192, 128, wall=[1, 1, 1, 0])
-    pitfalls.add(pitfall)
+    for data in lvl_data[level]['pitfalls']:
+        pit = Pitfall(window, data[0], data[1], wall=data[2])
+        pitfalls.add(pit)
 
     trees = pyg.sprite.Group()
     for pos in lvl_data[level]['trees']:
@@ -68,85 +73,104 @@ if __name__ == '__main__':
         trees.add(tree)
 
     while True:
-
-         # --- INPUT ---
-        for event in pyg.event.get():
-            if event.type == pyg.QUIT:
-                terminate()
-            elif event.type == pyg.KEYDOWN:
-                if event.key == pyg.K_ESCAPE:
+        if paused:
+            for event in pyg.event.get():
+                if event.type == pyg.QUIT:
                     terminate()
-                elif event.key == pyg.K_SPACE:
-                    next_level(window, level, player, statics, pitfalls, trees)
-                    level = str(int(level) + 1)
+                elif event.type == pyg.KEYDOWN:
+                    if event.key == pyg.K_ESCAPE:
+                        terminate()
+                    elif event.key == pyg.K_TAB:
+                        paused = False
+        else:
+            for event in pyg.event.get():
+                if event.type == pyg.QUIT:
+                    terminate()
+                elif event.type == pyg.KEYDOWN:
+                    if event.key == pyg.K_ESCAPE:
+                        terminate()
+                    elif event.key == pyg.K_TAB:
+                        paused = True
+                elif event.type == timer_tick:
+                    if time_death:
+                        time -= 1
+                        if time == 0:
+                            player.die()
+                            time = lvl_data[level]['time']
+                elif event.type == player_death.type:
                     time = lvl_data[level]['time']
-                    bg_tiles = init_grass(level)
-                elif event.key == pyg.K_k:
-                    player.die()
-            elif event.type == timer_tick:
-                time -= 1
-                if time == 0:
-                    player.die()
-                    time = lvl_data[level]['time']
 
 
-        event_keys = pyg.key.get_pressed()
-        if event_keys[pyg.K_a]:
-            if player.vel_x > -player.speed:
-                player.vel_x -= player.accel
-                player.image = pyg.image.load(img_path['player4'])
-        if event_keys[pyg.K_d]:
-            if player.vel_x < player.speed:
-                player.vel_x += player.accel
-                player.image = pyg.image.load(img_path['player2'])
-        if event_keys[pyg.K_w]:
-            if player.vel_y > -player.speed:
-                player.vel_y -= player.accel
-                player.image = pyg.image.load(img_path['player1'])
-        if event_keys[pyg.K_s]:
-            if player.vel_y < player.speed:
-                player.vel_y += player.accel
-                player.image = pyg.image.load(img_path['player3'])
 
-        score_text = font.render(f"Score: {score}", True, color['black'])
-        level_text = font.render(f"Level: {level}", True, color['black'])
-        timer_text = font.render(f"Time Remaining: {time}", True, color['black'])
-        death_text = font.render(f"Deaths: {player.deaths}", True, color['black'])
-
-        window.fill(color['bg'])
-
-        for bg_tile in bg_tiles:
-            bg_tile.render()
-        for static in statics:
-            static.render()
-        border.render()
-
-        for pit in pitfalls:
-            pit.render()
-
-        player.update(border.rect, statics, pitfalls, trees)
-        player.render()
-
-        for tree in trees:
-            tree.render()
-
-        window.blit(score_text, (15, 15))
-        window.blit(level_text, (1075, 15))
-        window.blit(timer_text, (700, 15))
-        window.blit(death_text, (300, 15))
-
-        pyg.display.flip()
-
-        clock.tick(30)
+            event_keys = pyg.key.get_pressed()
+            if event_keys[pyg.K_a] or event_keys[pyg.K_LEFT]:
+                if player.vel_x > -player.speed:
+                    player.vel_x -= player.accel
+                    player.image = pyg.image.load(img_path['player4'])
+            if event_keys[pyg.K_d] or event_keys[pyg.K_RIGHT]:
+                if player.vel_x < player.speed:
+                    player.vel_x += player.accel
+                    player.image = pyg.image.load(img_path['player2'])
+            if event_keys[pyg.K_w] or event_keys[pyg.K_UP]:
+                if player.vel_y > -player.speed:
+                    player.vel_y -= player.accel
+                    player.image = pyg.image.load(img_path['player1'])
+            if event_keys[pyg.K_s] or event_keys[pyg.K_DOWN]:
+                if player.vel_y < player.speed:
+                    player.vel_y += player.accel
+                    player.image = pyg.image.load(img_path['player3'])
 
 
-def terrainGenList():
-    gen = []
-    for i in range(18):
-        tmp = []
-        for j in range(9):
-            tmp.append(random.randint(1, 12))
+            if pyg.Rect.colliderect(player.rect, exit.rect):
+                score += lvl_data[level]['time'] + time - 5 * player.deaths
+                next_level(window, level, player, statics, pitfalls, trees)
+                level = str(int(level) + 1)
+                time = lvl_data[level]['time']
+                bg_tiles = init_grass(level)
+                exit.__init__(window, level)
+                border.__init__(window, lvl_data[level]['num_tiles'])
+                for pos in lvl_data[level]['trees']:
+                    tree = Tree(window, pos[0], pos[1])
+                    trees.add(tree)
+                for pos in lvl_data[level]['pitfalls']:
+                    pit = Pitfall(window, pos[0], pos[1])
+                    pitfalls.add(pit)
+                for data in lvl_data[level]['statics']:
+                    static = Static(window, data[2], data[0], data[1])
+                    statics.add(static)
+                for data in lvl_data[level]['pushables']:
+                    pushable = Pushable(window, data[0], data[1], data[2])
+                    pushables.add(pushable)
 
-        gen.append(tmp)
+            score_text = font.render(f"Score: {score}", True, color['black'])
+            level_text = font.render(f"Level: {level}", True, color['black'])
+            timer_text = font.render(f"Time Remaining: {time}", True, color['black'])
+            death_text = font.render(f"Deaths: {player.deaths}", True, color['black'])
 
-    return gen
+
+            window.fill(color['bg'])
+
+            for bg_tile in bg_tiles: bg_tile.render()
+            for static in statics: static.render()
+            for pushable in pushables: pushable.render()
+            for pit in pitfalls: pit.render()
+
+            border.render()
+            exit.render()
+
+            player.update(border.rect, statics, pitfalls, trees, pushables)
+            player.render()
+
+            for tree in trees: tree.render()
+
+            window.blit(score_text, (15, 15))
+            window.blit(level_text, (1075, 15))
+            window.blit(timer_text, (700, 15))
+            window.blit(death_text, (300, 15))
+
+            pyg.display.flip()
+
+            clock.tick(30)
+
+            m_pos = pyg.mouse.get_pos()
+            pyg.display.set_caption(f"The Game of Something-or-other -- {64 * round((m_pos[0] - 32)/64)}, {64 * round((m_pos[1] - 32)/64)}")
